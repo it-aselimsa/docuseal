@@ -6,7 +6,15 @@
     <style></style>
   </head>
   <body dir="<%= TextUtils.rtl?(yield) ? 'rtl' : 'auto' %>">
+    <% brand_url_options = Docuseal.default_url_options %>
+    <% brand_logo_url = Addressable::URI.new(scheme: brand_url_options[:protocol].presence || 'https', host: brand_url_options[:host], port: brand_url_options[:port], path: Branding::EMAIL_LOGO_PATH).to_s %>
+    <p style="margin: 0 0 16px 0;">
+      <img src="<%= brand_logo_url %>" alt="<%= Branding::SHORT_NAME %>" width="110" style="display: block; height: auto; border: 0;">
+    </p>
     <%= yield %>
+    <p style="color: #6b6b6b; font-size: 12px; margin-top: 24px;">
+      <%= Branding::SHORT_NAME %> &middot; <%= Branding::LEGAL_NAME %>
+    </p>
     <%= render partial: 'shared/mailer_attribution' %>
   </body>
 </html>

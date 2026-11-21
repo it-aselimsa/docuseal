@@ -1,0 +1,68 @@
+name: Imagen Docker Aselimsa
+
+# Compila la imagen personalizada y la publica en GitHub Container Registry:
+#   ghcr.io/<usuario-u-organizacion>/docuseal-aselimsa:latest
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: aselimsa-docker
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Versión y enlace al código fuente (AGPL)
+        run: |
+          VERSION="$(git describe --tags --abbrev=0 2>/dev/null || echo dev)-aselimsa"
+          echo "$VERSION" > .version
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          sed -i "s#ENV.fetch('BRAND_SOURCE_URL', '[^']*')#ENV.fetch('BRAND_SOURCE_URL', '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}')#" lib/branding.rb
+          grep -n "BRAND_SOURCE_URL" lib/branding.rb
+
+      - name: Etiquetas de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/docuseal-aselimsa
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ env.VERSION }}
+            type=sha,prefix=
+
+      - name: Preparar Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compilar y publicar
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

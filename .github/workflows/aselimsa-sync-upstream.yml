@@ -1,0 +1,41 @@
+name: Sincronizar con DocuSeal oficial
+
+# Cada lunes trae las novedades y parches de seguridad de docusealco/docuseal,
+# las fusiona con la personalización de Aselimsa y lanza la compilación de la imagen.
+# Si hay conflictos, el job falla y GitHub te avisa por email: hay que resolverlos a mano.
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Fusionar cambios de DocuSeal
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/docusealco/docuseal.git
+          git fetch upstream master --tags
+          BEFORE=$(git rev-parse HEAD)
+          git merge --no-edit upstream/master
+          git push origin master --tags
+          if [ "$BEFORE" != "$(git rev-parse HEAD)" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Lanzar compilación de la imagen
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run aselimsa-docker.yml --ref master

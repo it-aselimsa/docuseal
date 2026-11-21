@@ -545,7 +545,7 @@ module Submissions
     end
 
     def sign_reason
-      'Signed with DocuSeal.com'
+      "Firmado con #{Branding::NAME} (DocuSeal)"
     end
 
     def select_attachments(submitter)
@@ -567,11 +567,11 @@ module Submissions
     def add_logo(column, _submission = nil)
       column.image(PdfIcons.logo_io, width: 40, height: 40, position: :float)
 
-      column.formatted_text([{ text: 'DocuSeal',
-                               link: Docuseal::PRODUCT_EMAIL_URL }],
+      column.formatted_text([{ text: Branding::SHORT_NAME,
+                               link: Branding::WEBSITE_URL }],
                             font_size: 20,
                             font: [FONT_NAME, { variant: :bold }],
-                            width: 100,
+                            width: 160,
                             padding: [5, 0, 0, 8],
                             position: :float, text_align: :left)
     end
