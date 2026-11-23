@@ -3,6 +3,11 @@ name: Sincronizar con DocuSeal oficial
 # Cada lunes trae las novedades y parches de seguridad de docusealco/docuseal,
 # las fusiona con la personalización de Aselimsa y lanza la compilación de la imagen.
 # Si hay conflictos, el job falla y GitHub te avisa por email: hay que resolverlos a mano.
+#
+# Secreto opcional SYNC_TOKEN (token fine-grained de it-aselimsa con permisos
+# Contents y Workflows de lectura/escritura sobre este repositorio). Sin él, la
+# sincronización falla las semanas en que DocuSeal modifica sus propios workflows,
+# porque el token automático de Actions no puede tocar .github/workflows.
 
 on:
   schedule:
@@ -21,6 +26,7 @@ jobs:
         with:
           ref: master
           fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Fusionar cambios de DocuSeal
         id: merge
@@ -28,10 +34,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/docusealco/docuseal.git
-          git fetch upstream master --tags
+          git fetch upstream master --no-tags
           BEFORE=$(git rev-parse HEAD)
           git merge --no-edit upstream/master
-          git push origin master --tags
+          if ! git push origin master 2>push.log; then
+            cat push.log
+            if grep -q "without \`workflows\` permission" push.log; then
+              echo "::error::DocuSeal ha cambiado sus workflows y el token automático no puede subirlos. Crea el secreto SYNC_TOKEN (ver comentario al inicio de este fichero)."
+            fi
+            exit 1
+          fi
           if [ "$BEFORE" != "$(git rev-parse HEAD)" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
 
       - name: Lanzar compilación de la imagen

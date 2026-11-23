@@ -30,7 +30,8 @@ jobs:
 
       - name: Versión y enlace al código fuente (AGPL)
         run: |
-          VERSION="$(git describe --tags --abbrev=0 2>/dev/null || echo dev)-aselimsa"
+          UPSTREAM=$(git ls-remote --tags --refs --sort=-v:refname https://github.com/docusealco/docuseal.git | head -1 | sed 's#.*refs/tags/##')
+          VERSION="${UPSTREAM:-dev}-aselimsa"
           echo "$VERSION" > .version
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           sed -i "s#ENV.fetch('BRAND_SOURCE_URL', '[^']*')#ENV.fetch('BRAND_SOURCE_URL', '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}')#" lib/branding.rb
